@@ -1,6 +1,40 @@
 import { test, expect } from '@playwright/test';
+import oracledb from 'oracledb';
 
+// 🔧 Función que obtiene una precertificación aleatoria desde Oracle
+async function ObtenerPrecertificacion(): Promise<string> {
+  const connection = await oracledb.getConnection({
+    user: 'USR_consulta_QA',
+    password: 'prueba01',
+    connectString: 'ARSPRIMERA_QA.WORLD'
+  });
+
+  const result = await connection.execute(
+    `SELECT SECUENCIAL
+     FROM (
+       SELECT SECUENCIAL
+       FROM PRE_CERTIFICACION
+       WHERE ANO = 2025
+         AND NO_MEDICO = 13333
+         AND ESTATUS = 734
+       ORDER BY DBMS_RANDOM.VALUE
+     )
+     WHERE ROWNUM < 2`
+  );
+
+  await connection.close();
+
+  const precertificacion = result.rows?.[0]?.[0];
+  if (!precertificacion) throw new Error('No se encontró una precertificación válida');
+
+  return precertificacion.toString();
+}
+
+// 🧪 Test Playwright
 test('Precertificación Médico - Flujo completo', async ({ page }) => {
+  const numeroPrecert = await ObtenerPrecertificacion(); // ✅ Llamada válida dentro del test
+  console.log(`Número de precertificación seleccionado: ${numeroPrecert}`);
+
   // Navegar al login
   await page.goto('http://172.24.208.208:30129/login');
 
@@ -14,14 +48,13 @@ test('Precertificación Médico - Flujo completo', async ({ page }) => {
   await page.getByRole('button', { name: 'Confirmar Precertificación' }).click();
 
   // Buscar número de precertificación
-  const numeroPrecert = '5462150';
   await page.getByRole('textbox', { name: 'Número precertificación' }).fill(numeroPrecert);
   await page.getByRole('button', { name: 'Buscar' }).click();
 
-  // Autorizar precertificación
-  await page.getByRole('button', { name: 'Autorizar' }).click();
+   
 
-  // (Opcional) Verificar que se muestre un mensaje de éxito
-   await page.waitForTimeout(5000);
-  await expect(page.getByText('Precertificación autorizada')).toBeVisible();
+  await page.getByRole('button', {name:'Autorizar'}).click();
+  await page.waitForTimeout(5000);
+  await expect(page.getByText(/Precertificación .* confirmada con éxito!/)).toBeVisible();
+
 });

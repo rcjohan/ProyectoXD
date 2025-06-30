@@ -1,7 +1,8 @@
 
 # Playwright
-node_modules/
-/test-results/
-/playwright-report/
-/blob-report/
-/playwright/.cache/
+# Ignorar todo
+*
+
+# No ignorar la carpeta tests
+!/tests/
+!/tests/**
